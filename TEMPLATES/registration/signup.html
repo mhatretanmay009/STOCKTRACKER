@@ -1,12 +1,83 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Sign Up</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Register</button>
-</form>
-<p>Already have an account? <a href="{% url 'login' %}">Log in here</a>.</p>
-{% endblock %}
+<div class="d-flex justify-content-center align-items-center min-vh-100 bg-light py-5">
+    <div class="card border-0 shadow-sm p-4 rounded-4" style="max-width: 440px; width: 100%; background: #ffffff;">
 
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <div class="mb-2" style="font-size: 2.5rem;">📦</div>
+            <h3 class="fw-bold text-dark m-0">Create Account</h3>
+            <p class="text-muted small mt-1">Sign up to manage your warehouse inventory</p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                    {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Username Field -->
+            <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label text-secondary small fw-semibold mb-1">Username</label>
+                <input type="text"
+                       name="{{ form.username.name }}"
+                       id="{{ form.username.id_for_label }}"
+                       class="form-control rounded-3 py-2 px-3 {% if form.username.errors %}is-invalid{% endif %}"
+                       placeholder="Enter username"
+                       value="{{ form.username.value|default:'' }}" required>
+                {% if form.username.errors %}
+                    <div class="invalid-feedback small">{{ form.username.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Password Field -->
+            <div class="mb-3">
+                <label for="{{ form.password1.id_for_label }}" class="form-label text-secondary small fw-semibold mb-1">Password</label>
+                <input type="password"
+                       name="{{ form.password1.name }}"
+                       id="{{ form.password1.id_for_label }}"
+                       class="form-control rounded-3 py-2 px-3 {% if form.password1.errors %}is-invalid{% endif %}"
+                       placeholder="Enter password" required>
+                {% if form.password1.errors %}
+                    <div class="invalid-feedback small">{{ form.password1.errors.0 }}</div>
+                {% endif %}
+                <div class="form-text text-muted mt-1" style="font-size: 0.75rem;">
+                    Must be at least 8 characters long and not entirely numeric.
+                </div>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="mb-4">
+                <label for="{{ form.password2.id_for_label }}" class="form-label text-secondary small fw-semibold mb-1">Confirm Password</label>
+                <input type="password"
+                       name="{{ form.password2.name }}"
+                       id="{{ form.password2.id_for_label }}"
+                       class="form-control rounded-3 py-2 px-3 {% if form.password2.errors %}is-invalid{% endif %}"
+                       placeholder="Confirm password" required>
+                {% if form.password2.errors %}
+                    <div class="invalid-feedback small">{{ form.password2.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 mb-3">
+                Register
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="text-center small text-muted">
+            Already have an account?
+            <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-semibold">Log in here</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

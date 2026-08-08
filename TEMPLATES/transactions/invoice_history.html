@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">🕒 Invoice & Transaction History</h3>
+        <a href="{% url 'create_transaction' %}" class="btn btn-primary fw-bold">+ New Bill</a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Type</th>
+                        <th>Product</th>
+                        <th>Party</th>
+                        <th>Qty</th>
+                        <th>Total Amount</th>
+                        <th>Date</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions %}
+                    <tr>
+                        <td><code>#INV-{{ t.id }}</code></td>
+                        <td>
+                            {% if t.transaction_type == 'IN' %}
+                                <span class="badge bg-success">Inward</span>
+                            {% else %}
+                                <span class="badge bg-primary">Outward</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ t.product.name }}</td>
+                        <td>{{ t.party_name|default:"-" }}</td>
+                        <td>{{ t.quantity }}</td>
+                        <td class="fw-bold">₹{{ t.total_amount }}</td>
+                        <td class="small text-muted">{{ t.created_at|date:"M d, Y H:i" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'view_invoice' t.id %}" class="btn btn-sm btn-outline-dark">View Invoice</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No transactions recorded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

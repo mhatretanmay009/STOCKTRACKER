@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 p-4">
+            <h4 class="fw-bold text-secondary mb-4">✏️ Edit Inventory Item</h4>
+            <form method="POST" enctype="multipart/form-data" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">SKU</label>
+                    <input type="text" name="sku" class="form-control" value="{{ product.sku }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Product Image</label>
+                    <input type="file" name="image" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Product Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ product.name }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Category</label>
+                    <input type="text" name="category" class="form-control" value="{{ product.category }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Warehouse Location</label>
+                    <input type="text" name="warehouse_location" class="form-control" value="{{ product.warehouse_location }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Quantity</label>
+                    <input type="number" name="quantity" class="form-control" value="{{ product.quantity }}" min="0" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Unit Price (₹)</label>
+                    <input type="number" step="0.01" name="unit_price" class="form-control" value="{{ product.unit_price }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Reorder Level</label>
+                    <input type="number" name="reorder_level" class="form-control" value="{{ product.reorder_level }}">
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'home' %}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary fw-bold">Update Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

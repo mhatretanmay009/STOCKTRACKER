@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Add Customer Form -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white border-0 pt-3 fw-bold">
+                    👥 Add New Customer
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Customer Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="Full Name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Phone</label>
+                            <input type="text" name="phone" class="form-control" placeholder="Phone Number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="Email Address">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Address</label>
+                            <textarea name="address" class="form-control" rows="2" placeholder="Address"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">+ Add Customer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Directory Table -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white border-0 pt-3 fw-bold fs-5">
+                    📋 Customer Directory
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone / Email</th>
+                                <th>Address</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in customers %}
+                            <tr>
+                                <td class="fw-bold">{{ c.name }}</td>
+                                <td>
+                                    <div>{{ c.phone|default:"" }}</div>
+                                    <small class="text-muted">{{ c.email|default:"" }}</small>
+                                </td>
+                                <td>{{ c.address|default:"-" }}</td>
+                                <td class="text-end">
+                                    <form action="{% url 'delete_customer' c.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No customers added yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,16 @@
+# Environment & Secrets
+.env
+*.pyc
+__pycache__/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Static and Media Files
+staticfiles/
+media/
+
+# Database (optional - ignore if you don't want local test data on production)
+db.sqlite3

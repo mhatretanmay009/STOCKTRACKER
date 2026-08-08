@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white border-0 pt-4 px-4 fw-bold fs-4">
+                    🏢 Company Profile & Branding Settings
+                </div>
+                <div class="card-body p-4">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- Logo Upload & Preview -->
+                        <div class="mb-4 text-center">
+                            {% if profile.logo %}
+                                <img src="{{ profile.logo.url }}" alt="Company Logo" class="img-thumbnail mb-2" style="max-height: 120px;">
+                            {% else %}
+                                <div class="p-3 bg-light text-muted border rounded d-inline-block mb-2">No Logo Uploaded</div>
+                            {% endif %}
+                            <div>
+                                <label class="form-label fw-bold small d-block">Company Logo (Displays on Invoices & Reports)</label>
+                                <input type="file" name="logo" class="form-control" accept="image/*">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Company / Business Name</label>
+                                <input type="text" name="company_name" class="form-control" value="{{ profile.company_name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">GSTIN / Tax ID</label>
+                                <input type="text" name="gstin_tax_id" class="form-control" value="{{ profile.gstin_tax_id|default:'' }}" placeholder="e.g. 27AAAAA0000A1Z5">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Business Email</label>
+                                <input type="email" name="email" class="form-control" value="{{ profile.email|default:'' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Business Phone</label>
+                                <input type="text" name="phone" class="form-control" value="{{ profile.phone|default:'' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small">Address</label>
+                                <textarea name="address" class="form-control" rows="3">{{ profile.address|default:'' }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">Save Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

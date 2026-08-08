@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Top Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-primary text-white p-3">
+            <h6 class="text-uppercase fw-bold mb-1 small opacity-75">Total SKUs</h6>
+            <h2 class="mb-0 fw-bold">{{ total_items }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-success text-white p-3">
+            <h6 class="text-uppercase fw-bold mb-1 small opacity-75">Total Warehouse Stock</h6>
+            <h2 class="mb-0 fw-bold">{{ total_quantity }} <span class="fs-6">units</span></h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-warning text-dark p-3">
+            <h6 class="text-uppercase fw-bold mb-1 small opacity-75">Low Stock Alerts</h6>
+            <h2 class="mb-0 fw-bold">{{ low_stock_count }} <span class="fs-6">items</span></h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 bg-dark text-white p-3">
+            <h6 class="text-uppercase fw-bold mb-1 small opacity-75">Total Asset Value</h6>
+            <h2 class="mb-0 fw-bold">₹{{ total_value }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Category Chart Card -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white border-0 pt-3 fw-bold">
+                📦 Stock Quantity by Category
+            </div>
+            <div class="card-body p-3">
+                <div style="height: 260px; position: relative;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Ratio Chart Card -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-header bg-white border-0 pt-3 fw-bold">
+                ⚠️ Stock Status Ratio
+            </div>
+            <div class="card-body p-3">
+                <div style="height: 260px; position: relative;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white border-0 pt-3 fw-bold fs-5">
+        📦 Add New Inventory Item
+    </div>
+    <div class="card-body">
+        <form action="{% url 'add_product' %}" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row g-3">
+                <!-- Row 1: Item Details -->
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">SKU Code</label>
+                    <input type="text" name="sku" class="form-control" placeholder="e.g. ELEC-001" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Product Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="Product Name" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Category</label>
+                    <input type="text" name="category" class="form-control" placeholder="Category" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Quantity</label>
+                    <input type="number" name="quantity" class="form-control" placeholder="Qty" min="0" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Reorder Level</label>
+                    <input type="number" name="reorder_level" class="form-control" value="5" min="0" required>
+                </div>
+
+                <!-- Row 2: Pricing & Location -->
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Cost Price (₹)</label>
+                    <input type="number" step="0.01" name="cost_price" class="form-control" placeholder="Purchase Cost" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Selling Price (₹)</label>
+                    <input type="number" step="0.01" name="unit_price" class="form-control" placeholder="Selling Price" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Warehouse Location</label>
+                    <input type="text" name="warehouse_location" class="form-control" placeholder="Shelf / Rack Location">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Product Image</label>
+                    <input type="file" name="image" class="form-control" accept="image/*">
+                </div>
+
+                <!-- Row 3: Submit Button -->
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                        + Add Inventory Item
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if request.user.is_staff %}
+    <!-- Financial KPI Cards (Side-by-Side Horizontal Row) -->
+<div class="row g-3 mb-4">
+    <!-- Total Inventory Cost -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-2 bg-white p-2">
+            <div class="card-body">
+                <span class="text-muted small fw-bold text-uppercase">Total Inventory Cost</span>
+                <h3 class="fw-bold text-dark mb-0 mt-2">₹{{ total_cost|default:0|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Retail Value -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-2 bg-white p-2">
+            <div class="card-body">
+                <span class="text-muted small fw-bold text-uppercase">Total Retail Value</span>
+                <h3 class="fw-bold text-primary mb-0 mt-2">₹{{ total_valuation|default:0|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estimated Potential Profit -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-2 bg-white p-2">
+            <div class="card-body">
+                <span class="text-muted small fw-bold text-uppercase">Estimated Potential Profit</span>
+                <h3 class="fw-bold text-success mb-0 mt-2">₹{{ total_potential_profit|default:0|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- Search & Export Bar -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Search & Scan Bar Header -->
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <form method="GET" action="{% url 'home' %}" class="d-flex flex-grow-1 gap-2">
+            <input type="text" id="sku-search-input" name="q" class="form-control" placeholder="Search by SKU, Name, or Category..." value="{{ query|default:'' }}">
+            <button type="submit" class="btn btn-secondary">Search</button>
+        </form>
+
+        <!-- Barcode Scanner Trigger Button -->
+        <button type="button" class="btn btn-dark fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#barcodeModal">
+            📷 Scan Barcode
+        </button>
+    </div>
+
+    <!-- Camera Barcode Scanner Modal -->
+    <div class="modal fade" id="barcodeModal" tabindex="-1" aria-labelledby="barcodeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="barcodeModalLabel">📷 Scan Product Barcode</h5>
+                    <button type="button" class="btn-close" id="close-modal-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-muted small">Align the barcode/QR code within the camera frame below:</p>
+
+                    <!-- Camera Video Stream Area -->
+                    <div id="barcode-scanner-reader" style="width: 100%; min-height: 250px;"></div>
+
+                    <div id="scan-result" class="alert alert-success mt-3 d-none fw-bold"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+    <a href="{% url 'export_inventory_csv' %}" class="btn btn-outline-success btn-sm fw-bold">
+        📊 Export CSV
+    </a>
+    <a href="{% url 'print_inventory_report' %}" target="_blank" class="btn btn-outline-primary btn-sm fw-bold">
+        🖨️ PDF Report
+    </a>
+</div>
+
+<!--    <a href="{% url 'export_csv' %}" class="btn btn-outline-success fw-bold">📥 Export CSV</a>-->
+</div>
+
+<!-- Inventory Items Table -->
+<div class="card shadow-sm border-0 p-4 mb-5">
+    <h5 class="card-title fw-bold text-secondary mb-3">📋 Warehouse Inventory</h5>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>SKU</th>
+                    <th>Image</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Warehouse Location</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td><code>{{ product.sku }}</code></td>
+                    <td>
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="rounded" style="width: 45px; height: 45px; object-fit: cover;">
+                        {% else %}
+                            <span class="badge bg-light text-muted">No Image</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold">{{ product.name }}</td>
+                    <td>{{ product.category|default:"—" }}</td>
+                    <td><span class="badge bg-secondary">{{ product.warehouse_location }}</span></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1">
+                            <form action="{% url 'adjust_stock' product.id 'decrease' %}" method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2 fw-bold">-</button>
+                            </form>
+                            <span class="fw-bold px-2">{{ product.quantity }}</span>
+                            <form action="{% url 'adjust_stock' product.id 'increase' %}" method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-success btn-sm py-0 px-2 fw-bold">+</button>
+                            </form>
+                        </div>
+                    </td>
+                    <td>₹{{ product.unit_price }}</td>
+                    <td>
+                        {% if product.is_low_stock %}
+                            <span class="badge bg-danger">Low Stock Warning</span>
+                        {% else %}
+                            <span class="badge bg-success">In Stock</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-primary">
+                                Edit
+                            </a>
+
+                            <button type="button" class="btn btn-sm btn-outline-dark"
+                                    onclick="showBarcodeModal('{{ product.name|escapejs }}', '{{ product.sku|escapejs }}')"
+                                    title="View Barcode / QR Code">
+                                📱 QR / Barcode
+                            </button>
+
+                            {% if request.user.is_staff %}
+                            <form action="{% url 'delete_product' product.id %}" method="POST" class="d-inline m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    Delete
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        No inventory recorded yet! Add an item above to get started.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 p-4 mb-4">
+    <h6 class="fw-bold text-secondary mb-3">📜 Recent Stock Activity Log</h6>
+    <ul class="list-group list-group-flush small">
+        {% for log in recent_logs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent px-0">
+                <div>
+                    <span class="fw-bold">{{ log.product_name }}</span> — {{ log.action }}
+                    <span class="text-muted opacity-75">by {{ log.user.username }}</span>
+                </div>
+                <span class="badge bg-light text-dark fw-normal">{{ log.timestamp|timesince }} ago</span>
+            </li>
+        {% empty %}
+            <li class="list-group-item bg-transparent text-muted px-0">No recent activity recorded yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+<!-- Barcode / QR Code Modal -->
+<div class="modal fade" id="barcodeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalProductName">Product Name</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-2">SKU: <strong id="modalProductSKU"></strong></p>
+
+                <!-- Tabs for Barcode vs QR Code -->
+                <ul class="nav nav-pills justify-content-center mb-3" id="pills-tab" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="pills-barcode-tab" data-bs-toggle="pill" data-bs-target="#pills-barcode">
+                            Barcode
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="pills-qr-tab" data-bs-toggle="pill" data-bs-target="#pills-qr">
+                            QR Code
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContent">
+                    <!-- Barcode View -->
+                    <div class="tab-pane fade show active" id="pills-barcode">
+                        <svg id="barcode"></svg>
+                    </div>
+                    <!-- QR Code View -->
+                    <div class="tab-pane fade" id="pills-qr">
+                        <div id="qrcode" class="d-flex justify-content-center my-2"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Print Label</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JS Libraries for Barcode and QR Code Generation -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+let qrCodeInstance = null;
+
+function showBarcodeModal(productName, sku) {
+    document.getElementById('modalProductName').innerText = productName;
+    document.getElementById('modalProductSKU').innerText = sku;
+
+    // Generate Barcode
+    JsBarcode("#barcode", sku, {
+        format: "CODE128",
+        lineColor: "#000",
+        width: 2,
+        height: 60,
+        displayValue: true
+    });
+
+    // Generate QR Code
+    const qrContainer = document.getElementById('qrcode');
+    qrContainer.innerHTML = ''; // Clear previous QR
+    qrCodeInstance = new QRCode(qrContainer, {
+        text: sku,
+        width: 128,
+        height: 128
+    });
+
+    // Open Modal
+    const modal = new bootstrap.Modal(document.getElementById('barcodeModal'));
+    modal.show();
+}
+</script>
+
+<!-- Chart JS Initialization Scripts -->
+<script>
+    const categoryLabels = {{ category_labels|safe }};
+    const categoryData = {{ category_data|safe }};
+
+    // Category Bar Chart
+    const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctxCategory, {
+        type: 'bar',
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                label: 'Stock Quantity',
+                data: categoryData,
+                backgroundColor: '#0d6efd',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // Status Doughnut Chart
+    const ctxStatus = document.getElementById('statusChart').getContext('2d');
+
+    new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['In Stock', 'Low Stock'],
+            datasets: [{
+                data: [
+                    Number("{{ in_stock_count|default:0 }}"),
+                    Number("{{ low_stock_count|default:0 }}")
+                ],
+                backgroundColor: ['#198754', '#ffc107']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    </script>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Data parsed from Django Context
+        const categoryLabels = [{% for cat in category_counts.keys %}"{{ cat|escapejs }}",{% endfor %}];
+        const categoryData = [{% for val in category_counts.values %}{{ val }},{% endfor %}];
+
+        const lowStockCount = {{ low_stock_count|default:0 }};
+        const totalItems = {{ total_items|default:0 }};
+        const normalStockCount = Math.max(0, totalItems - lowStockCount);
+
+        // 1. Stock Quantity by Category (Bar Chart)
+        const ctxCategory = document.getElementById('categoryChart');
+        if (ctxCategory) {
+            new Chart(ctxCategory, {
+                type: 'bar',
+                data: {
+                    labels: categoryLabels.length ? categoryLabels : ['No Data'],
+                    datasets: [{
+                        label: 'Quantity',
+                        data: categoryData.length ? categoryData : [0],
+                        backgroundColor: '#0d6efd',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+
+        // 2. Stock Status Ratio (Doughnut Chart)
+        const ctxStatus = document.getElementById('statusChart');
+        if (ctxStatus) {
+            new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normal Stock', 'Low Stock Alert'],
+                    datasets: [{
+                        data: [normalStockCount, lowStockCount],
+                        backgroundColor: ['#198754', '#ffc107']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    });
+</script>
+
+<!-- HTML5 QR / Barcode Scanner CDN -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let html5QrCode = null;
+
+        const modalElement = document.getElementById('barcodeModal');
+        const searchInput = document.getElementById('sku-search-input');
+        const scanResultDiv = document.getElementById('scan-result');
+
+        modalElement.addEventListener('shown.bs.modal', function () {
+            html5QrCode = new Html5Qrcode("barcode-scanner-reader");
+
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+            html5QrCode.start(
+                { facingMode: "environment" }, // Prefers rear camera on mobiles, default camera on desktop
+                config,
+                onScanSuccess
+            ).catch(err => {
+                console.error("Unable to start scanning:", err);
+            });
+        });
+
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(err => console.error(err));
+            }
+        });
+
+        function onScanSuccess(decodedText) {
+            // Display result box
+            scanResultDiv.classList.remove('d-none');
+            scanResultDiv.innerText = "Scanned SKU: " + decodedText;
+
+            // Stop scanner and fill input field
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    searchInput.value = decodedText;
+
+                    // Automatically submit search after 1 second
+                    setTimeout(() => {
+                        const bootstrapModal = bootstrap.Modal.getInstance(modalElement);
+                        if (bootstrapModal) bootstrapModal.hide();
+                        searchInput.form.submit();
+                    }, 800);
+                });
+            }
+        }
+    });
+</script>
+
+
+{% endblock %}

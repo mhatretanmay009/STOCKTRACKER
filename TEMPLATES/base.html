@@ -56,56 +56,43 @@
         </div>
     </nav>
 
-    <!-- Main Wrapper -->
-    <div class="d-flex" id="wrapper">
-        {% if user.is_authenticated %}
-        <!-- Collapsible Dark Sidebar Menu -->
-        <div id="sidebar-wrapper" class="p-3 text-white">
-            <ul class="nav nav-pills flex-column mb-auto gap-1">
-                <li>
-                    <a href="{% url 'company_settings' %}" class="sidebar-link">
-                        ⚙️ Settings
-                    </a>
-                </li>
-                {% if user.is_staff %}
-                <li>
-                    <a href="/admin/" target="_blank" class="sidebar-link">
-                        🛡️ Admin Portal
-                    </a>
-                </li>
-                {% endif %}
-                <li>
-                    <a href="{% url 'home' %}" class="sidebar-link active">
-                        📈 Dashboard
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'export_inventory_csv' %}" class="sidebar-link">
-                        📑 Export CSV
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'create_transaction' %}" class="sidebar-link">
-                        📝 Create New Bill
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'invoice_history' %}" class="sidebar-link">
-                        🕒 Invoice History
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'supplier_list' %}" class="sidebar-link">
-                        🚚 Suppliers
-                    </a>
-                </li>
-                <li>
-                    <a href="{% url 'customer_list' %}" class="sidebar-link">
-                        👥 Customers
-                    </a>
-                </li>
-            </ul>
+    <div class="sidebar">
+        <!-- Settings Link -->
+        <a href="{% url 'settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+            ⚙️ Settings
+        </a>
 
+        <!-- Dashboard Link -->
+        <a href="{% url 'dashboard' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            📈 Dashboard
+        </a>
+
+        <!-- Create New Bill / Transaction Link -->
+        <a href="{% url 'create_transaction' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
+            📝 Create New Bill
+        </a>
+
+        <!-- Invoice History Link -->
+        <a href="{% url 'invoice_history' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'invoice_history' %}active{% endif %}">
+            🕒 Invoice History
+        </a>
+
+        <!-- Suppliers Link -->
+        <a href="{% url 'suppliers' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'suppliers' %}active{% endif %}">
+            🚚 Suppliers
+        </a>
+
+        <!-- Customers Link -->
+        <a href="{% url 'customers' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}">
+            👥 Customers
+        </a>
+    </div>
             <hr class="border-secondary my-3">
 
             <!-- Logout Section -->

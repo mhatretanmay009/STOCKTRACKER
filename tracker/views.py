@@ -75,38 +75,38 @@ def home(request):
 @login_required
 def add_product(request):
     if request.method == 'POST':
+        sku = request.POST.get('sku')
+
+        # 1. Check if SKU already exists to prevent crashes
+        if Product.objects.filter(sku=sku).exists():
+            messages.error(request, f"A product with SKU '{sku}' already exists.")
+            return redirect('home')
+
+        # 2. Create the product ONCE with all fields
         product = Product.objects.create(
             user=request.user,
-            sku=request.POST.get('sku'),
+            sku=sku,
             name=request.POST.get('name'),
             category=request.POST.get('category'),
-            quantity=int(request.POST.get('quantity', 0)),
-            unit_price=float(request.POST.get('unit_price', 0)),
-            reorder_level=int(request.POST.get('reorder_level', 5)),
-            warehouse_location=request.POST.get('warehouse_location'),
+            quantity=int(request.POST.get('quantity') or 0),
+            cost_price=float(request.POST.get('cost_price') or 0.00),
+            unit_price=float(request.POST.get('unit_price') or 0.00),
+            reorder_level=int(request.POST.get('reorder_level') or 5),
+            warehouse_location=request.POST.get('warehouse_location', ''),
             image=request.FILES.get('image')
         )
-        cost_price = request.POST.get('cost_price', 0.00)
-        unit_price = request.POST.get('unit_price', 0.00)
 
-        Product.objects.create(
-            user=request.user,
-            sku=request.POST.get('sku'),
-            name=request.POST.get('name'),
-            category=request.POST.get('category'),
-            quantity=request.POST.get('quantity', 0),
-            cost_price=cost_price,  # <-- Add this field
-            unit_price=unit_price,
-            warehouse_location=request.POST.get('warehouse_location', ''),
-            reorder_level=request.POST.get('reorder_level', 5),
-        )
-
+        # 3. Log the activity
         ActivityLog.objects.create(
             user=request.user,
             product_name=product.name,
             action="Added new item to inventory"
         )
+
+        messages.success(request, f"Item '{product.name}' added successfully!")
         return redirect('home')
+
+    return redirect('home')
 
 
 @login_required

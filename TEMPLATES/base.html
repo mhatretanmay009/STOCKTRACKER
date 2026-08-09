@@ -3,117 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockTracker</title>
+    <title>{% block title %}StockTracker{% endblock %}</title>
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
-        #sidebar-wrapper {
+        body {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        #wrapper {
+            display: flex;
+            width: 100%;
+            align-items: stretch;
+            min-height: 100vh;
+        }
+
+        #sidebar {
             min-width: 250px;
             max-width: 250px;
-            min-height: calc(100vh - 56px);
-            transition: margin 0.25s ease-out;
-            background-color: #1e1e2d;
+            background-color: #1e1f2e;
+            color: #ffffff;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
         }
-        #sidebar-wrapper.collapsed {
+
+        #sidebar.active {
             margin-left: -250px;
         }
-        .sidebar-link {
-            color: #a2a3b7;
-            text-decoration: none;
+
+        #sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.7);
             padding: 10px 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-radius: 6px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
         }
-        .sidebar-link:hover, .sidebar-link.active {
+
+        #sidebar .nav-link:hover {
             color: #ffffff;
-            background-color: #2b2b40;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #sidebar .nav-link.active {
+            color: #ffffff;
+            background-color: #0d6efd;
+            font-weight: 600;
+        }
+
+        #content {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
     </style>
 </head>
 <body class="bg-light">
 
-    <!-- Top Navigation Header (Always Visible) -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm px-3 sticky-top">
-        <div class="container-fluid p-0">
-            <div class="d-flex align-items-center">
-                <!-- Hamburger Menu Toggle Button -->
-                <button class="btn btn-outline-dark me-3" id="menu-toggle" type="button" title="Toggle Menu">
-                    ☰
-                </button>
-                <!-- Permanent Brand Name -->
-                <a class="navbar-brand fw-bold fs-4 text-primary m-0" href="{% url 'home' %}">
-                    📦 StockTracker
+    <div id="wrapper">
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar" class="p-3">
+            <div class="mb-4 text-start px-2">
+                <a href="{% url 'home' %}" class="text-white text-decoration-none fw-bold fs-4 d-flex align-items-center gap-2">
+                    <span>📦</span> StockTracker
                 </a>
             </div>
 
-            {% if user.is_authenticated %}
-            <span class="navbar-text small text-muted d-none d-sm-inline">
-                Logged in as: <strong>{{ user.username }}</strong>
-            </span>
-            {% endif %}
-        </div>
-    </nav>
-
-    <div class="sidebar">
-        <!-- Settings Link -->
-        <a href="{% url 'settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-            ⚙️ Settings
-        </a>
-
-        <!-- Dashboard Link -->
-        <a href="{% url 'dashboard' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-            📈 Dashboard
-        </a>
-
-        <!-- Create New Bill / Transaction Link -->
-        <a href="{% url 'create_transaction' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
-            📝 Create New Bill
-        </a>
-
-        <!-- Invoice History Link -->
-        <a href="{% url 'invoice_history' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'invoice_history' %}active{% endif %}">
-            🕒 Invoice History
-        </a>
-
-        <!-- Suppliers Link -->
-        <a href="{% url 'suppliers' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'suppliers' %}active{% endif %}">
-            🚚 Suppliers
-        </a>
-
-        <!-- Customers Link -->
-        <a href="{% url 'customers' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}">
-            👥 Customers
-        </a>
-    </div>
-            <hr class="border-secondary my-3">
-
-            <!-- Logout Section -->
-            <div class="px-2">
-                {% if user.is_authenticated %}
-                <p class="small text-muted mb-1">Logged in as:</p>
-                <p class="fw-bold text-white mb-2">{{ user.username }}</p>
-                <form action="{% url 'logout' %}" method="POST" class="w-100">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                        🚪 Logout
-                    </button>
-                </form>
+            <!-- Links Area -->
+            <div class="nav flex-column gap-1">
+                <a href="#" class="nav-link">
+                    ⚙️ Settings
+                </a>
+                <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                    📈 Dashboard
+                </a>
+                <a href="#" class="nav-link">
+                    📊 Export CSV
+                </a>
+                <a href="#" class="nav-link">
+                    📝 Create New Bill
+                </a>
+                <a href="#" class="nav-link">
+                    🕒 Invoice History
+                </a>
+                <a href="#" class="nav-link">
+                    🚚 Suppliers
+                </a>
+                <a href="#" class="nav-link">
+                    👥 Customers
+                </a>
             </div>
-        </div>
-        {% endif %}
 
-        <!-- Main Page Content Area -->
-        <div id="page-content-wrapper" class="w-100 p-4">
-            {% block content %}
-            {% endblock %}
+            <!-- User Auth Footer -->
+            {% if user.is_authenticated %}
+                <div class="mt-auto pt-3 border-top border-secondary">
+                    <p class="small text-muted mb-1">Logged in as:</p>
+                    <p class="fw-bold text-white mb-2">{{ user.username }}</p>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">Logout</button>
+                    </form>
+                </div>
+            {% endif %}
+        </nav>
+
+        <!-- Main Content Area -->
+        <div id="content">
+            <!-- Top Header Navbar -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm px-3">
+                <div class="container-fluid p-0">
+                    <button class="btn btn-outline-dark me-2" id="sidebarCollapse" type="button">
+                        ☰
+                    </button>
+                    <span class="navbar-text fw-semibold text-secondary">
+                        Inventory Dashboard
+                    </span>
+                </div>
+            </nav>
+
+            <!-- Page Body Content -->
+            <div class="container-fluid p-4">
+                {% block content %}
+                {% endblock %}
+            </div>
         </div>
     </div>
 
@@ -122,19 +139,10 @@
 
     <!-- Sidebar Toggle Script -->
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const menuToggle = document.getElementById("menu-toggle");
-            const sidebarWrapper = document.getElementById("sidebar-wrapper");
-
-            if (menuToggle && sidebarWrapper) {
-                menuToggle.addEventListener("click", function (e) {
-                    e.preventDefault();
-                    sidebarWrapper.classList.toggle("collapsed");
-                });
-            }
+        document.getElementById('sidebarCollapse').addEventListener('click', function () {
+            document.getElementById('sidebar').classList.toggle('active');
         });
     </script>
-    {% block extra_js %}{% endblock %}
 </body>
 </html>
 

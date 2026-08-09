@@ -74,27 +74,27 @@
                 </a>
             </div>
 
-            <!-- Links Area -->
+            <!-- Mapped Sidebar Links -->
             <div class="nav flex-column gap-1">
-                <a href="#" class="nav-link">
+                <a href="{% url 'company_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'company_settings' %}active{% endif %}">
                     ⚙️ Settings
                 </a>
                 <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     📈 Dashboard
                 </a>
-                <a href="#" class="nav-link">
+                <a href="{% url 'export_inventory_csv' %}" class="nav-link {% if request.resolver_match.url_name == 'export_inventory_csv' %}active{% endif %}">
                     📊 Export CSV
                 </a>
-                <a href="#" class="nav-link">
+                <a href="{% url 'create_transaction' %}" class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
                     📝 Create New Bill
                 </a>
-                <a href="#" class="nav-link">
+                <a href="{% url 'invoice_history' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_history' %}active{% endif %}">
                     🕒 Invoice History
                 </a>
-                <a href="#" class="nav-link">
+                <a href="{% url 'supplier_list' %}" class="nav-link {% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}">
                     🚚 Suppliers
                 </a>
-                <a href="#" class="nav-link">
+                <a href="{% url 'customer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
                     👥 Customers
                 </a>
             </div>
@@ -145,4 +145,3 @@
     </script>
 </body>
 </html>
-

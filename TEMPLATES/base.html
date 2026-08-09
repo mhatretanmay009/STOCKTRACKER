@@ -120,11 +120,14 @@
                     <button class="btn btn-outline-dark me-2" id="sidebarCollapse" type="button">
                         ☰
                     </button>
+                    <div class="mb-4 text-start px-2">
+                        <a href="{% url 'home' %}" class="text-white text-decoration-none fw-bold fs-4 d-flex align-items-center gap-2">
+                            <span>📦</span> StockTracker
+                        </a>
+                    </div>
                     <!-- User Auth Footer -->
                     {% if user.is_authenticated %}
                         <div class="mt-auto pt-3 border-top border-secondary">
-                            <p class="small text-muted mb-1">Logged in as:</p>
-                            <p class="fw-bold text-white mb-2">{{ user.username }}</p>
                             <form method="post" action="{% url 'logout' %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-outline-danger btn-sm w-100">Logout</button>

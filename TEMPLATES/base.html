@@ -97,6 +97,7 @@
 
             <!-- Logout Section -->
             <div class="px-2">
+                {% if user.is_authenticated %}
                 <p class="small text-muted mb-1">Logged in as:</p>
                 <p class="fw-bold text-white mb-2">{{ user.username }}</p>
                 <form action="{% url 'logout' %}" method="POST" class="w-100">

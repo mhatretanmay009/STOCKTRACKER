@@ -76,27 +76,50 @@
 
             <!-- Mapped Sidebar Links -->
             <div class="nav flex-column gap-1">
-                <a href="{% url 'company_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'company_settings' %}active{% endif %}">
-                    ⚙️ Settings
-                </a>
+                {% if not user.profile.is_approved and not user.is_superuser %}
+                    <div class="alert alert-warning text-dark p-2 m-2 small">
+                        ⚠️ Account Pending Approval. Actions are restricted.
+                    </div>
+                {% endif %}
+
+                <!-- Dashboard (Available to all logged-in users) -->
                 <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     📈 Dashboard
                 </a>
-                <a href="{% url 'export_inventory_csv' %}" class="nav-link {% if request.resolver_match.url_name == 'export_inventory_csv' %}active{% endif %}">
-                    📊 Export CSV
-                </a>
-                <a href="{% url 'create_transaction' %}" class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
-                    📝 Create New Bill
-                </a>
-                <a href="{% url 'invoice_history' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_history' %}active{% endif %}">
-                    🕒 Invoice History
-                </a>
-                <a href="{% url 'supplier_list' %}" class="nav-link {% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}">
-                    🚚 Suppliers
-                </a>
-                <a href="{% url 'customer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
-                    👥 Customers
-                </a>
+
+                <!-- Create Bill & Invoice History (Sales, Manager, Admin) -->
+                {% if user.profile.is_approved and user.profile.can_create_bill or user.is_superuser %}
+                    <a href="{% url 'create_transaction' %}" class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
+                        📝 Create New Bill
+                    </a>
+                    <a href="{% url 'invoice_history' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_history' %}active{% endif %}">
+                        🕒 Invoice History
+                    </a>
+                {% endif %}
+
+                <!-- Export Reports (Accountant, Purchaser, Manager, Admin) -->
+                {% if user.profile.is_approved and user.profile.can_export_reports or user.is_superuser %}
+                    <a href="{% url 'export_inventory_csv' %}" class="nav-link">
+                        📊 Export CSV
+                    </a>
+                {% endif %}
+
+                <!-- Suppliers & Customers (Purchaser, Manager, Admin) -->
+                {% if user.profile.is_approved and user.profile.can_manage_suppliers or user.is_superuser %}
+                    <a href="{% url 'supplier_list' %}" class="nav-link">
+                        🚚 Suppliers
+                    </a>
+                    <a href="{% url 'customer_list' %}" class="nav-link">
+                        👥 Customers
+                    </a>
+                {% endif %}
+
+                <!-- Company Settings (Manager, Admin) -->
+                {% if user.profile.is_approved and user.profile.role == 'ADMIN' or user.profile.role == 'MANAGER' or user.is_superuser %}
+                    <a href="{% url 'company_settings' %}" class="nav-link">
+                        ⚙️ Settings
+                    </a>
+                {% endif %}
             </div>
 
             <!-- User Auth Footer -->
@@ -104,6 +127,11 @@
                 <div class="mt-auto pt-3 border-top border-secondary">
                     <p class="small text-muted mb-1">Logged in as:</p>
                     <p class="fw-bold text-white mb-2">{{ user.username }}</p>
+
+                    {% if user.is_staff %}
+                        <a href="/admin/" class="btn btn-warning btn-sm w-100 mb-2" target="_blank">⚙️ Admin Panel</a>
+                    {% endif %}
+
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-danger btn-sm w-100">Logout</button>

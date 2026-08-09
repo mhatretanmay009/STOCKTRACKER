@@ -65,6 +65,19 @@
                     <div class="invalid-feedback small">{{ form.password2.errors.0 }}</div>
                 {% endif %}
             </div>
+            <div class="mb-3">
+                <label for="requested_role" class="form-label fw-bold">Request Access Role:</label>
+                <select name="requested_role" id="requested_role" class="form-select" required>
+                    <option value="VIEWER">Viewer (Check Stock Only)</option>
+                    <option value="SALES">Sales Agent (Invoicing & Customer Orders)</option>
+                    <option value="CLERK" selected>Stock Clerk (Inventory & Quantities)</option>
+                    <option value="PURCHASER">Procurement (Suppliers & Reordering)</option>
+                    <option value="ACCOUNTANT">Accountant (Financials & Reports)</option>
+                    <option value="MANAGER">Store Manager (Full Operational Access)</option>
+                    <option value="ADMIN">System Admin (User Approvals & Settings)</option>
+                </select>
+                <small class="text-muted">An admin will review and grant access permissions after signup.</small>
+            </div>
 
             <!-- Submit Button -->
             <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 mb-3">

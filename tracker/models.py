@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class Product(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -174,3 +176,90 @@ class Customer(models.Model):
     def __str__(self):
         return self.name
 
+
+ROLE_CHOICES = (
+    ('VIEWER', 'Viewer (Check Stock Only)'),
+    ('SALES', 'Sales Agent (Invoicing & Customer Orders)'),
+    ('CLERK', 'Stock Clerk (Inventory & Quantities)'),
+    ('PURCHASER', 'Procurement (Suppliers & Reordering)'),
+    ('ACCOUNTANT', 'Accountant (Financials & Reports)'),
+    ('MANAGER', 'Store Manager (Full Operational Access)'),
+    ('ADMIN', 'System Admin (User Approvals & Settings)'),
+)
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='VIEWER')
+    requested_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CLERK')
+    is_approved = models.BooleanField(default=False)
+
+    # Granular Task Permissions
+    can_add_product = models.BooleanField(default=False)
+    can_create_bill = models.BooleanField(default=False)
+    can_manage_suppliers = models.BooleanField(default=False)
+    can_view_financials = models.BooleanField(default=False)
+    can_export_reports = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        # Auto-configure permission flags based on assigned role
+        if self.role == 'ADMIN' or self.role == 'MANAGER':
+            self.can_add_product = True
+            self.can_create_bill = True
+            self.can_manage_suppliers = True
+            self.can_view_financials = True
+            self.can_export_reports = True
+        elif self.role == 'CLERK':
+            self.can_add_product = True
+            self.can_create_bill = False
+            self.can_manage_suppliers = False
+            self.can_view_financials = False
+            self.can_export_reports = False
+        elif self.role == 'SALES':
+            self.can_add_product = False
+            self.can_create_bill = True
+            self.can_manage_suppliers = False
+            self.can_view_financials = False
+            self.can_export_reports = False
+        elif self.role == 'PURCHASER':
+            self.can_add_product = True
+            self.can_create_bill = False
+            self.can_manage_suppliers = True
+            self.can_view_financials = False
+            self.can_export_reports = True
+        elif self.role == 'ACCOUNTANT':
+            self.can_add_product = False
+            self.can_create_bill = False
+            self.can_manage_suppliers = False
+            self.can_view_financials = True
+            self.can_export_reports = True
+        elif self.role == 'VIEWER':
+            self.can_add_product = False
+            self.can_create_bill = False
+            self.can_manage_suppliers = False
+            self.can_view_financials = False
+            self.can_export_reports = False
+
+        # Superusers automatically receive full access
+        if self.user.is_superuser:
+            self.is_approved = True
+            self.role = 'ADMIN'
+            self.can_add_product = True
+            self.can_create_bill = True
+            self.can_manage_suppliers = True
+            self.can_view_financials = True
+            self.can_export_reports = True
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_role_display()} ({'Approved' if self.is_approved else 'Pending'})"
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()

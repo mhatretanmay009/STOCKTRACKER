@@ -6,24 +6,25 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login , logout
 from django.db.models import Q
 from django.http import HttpResponse
-from .models import Product, ActivityLog, Invoice, InvoiceItem, Supplier, Customer, CompanyProfile, Transaction
+from .models import Product, ActivityLog, Invoice, InvoiceItem, Supplier, Customer, CompanyProfile, Transaction, Profile
 from .utils import check_and_send_low_stock_alert
 from django.db.models import F, Sum, FloatField
 from django.contrib import messages
 
-
-
 def register_view(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
+        requested_role = request.POST.get('requested_role', 'EMPLOYEE')
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            return redirect('home')
+            # Update the auto-created profile with the requested role
+            user.profile.requested_role = requested_role
+            user.profile.save()
+            messages.success(request, "Account created successfully! Please wait for Admin approval before accessing all features.")
+            return redirect('login')
     else:
         form = UserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
-
 
 @login_required
 def home(request):
@@ -74,6 +75,12 @@ def home(request):
 
 @login_required
 def add_product(request):
+    # Lock action if user is not approved or lacks permissions
+    if not request.user.is_superuser and not (
+            request.user.profile.is_approved and request.user.profile.can_add_product):
+        messages.error(request, "Permission denied. You do not have rights to add products.")
+        return redirect('home')
+
     if request.method == 'POST':
         sku = request.POST.get('sku')
 

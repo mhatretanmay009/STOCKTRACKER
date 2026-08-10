@@ -58,24 +58,23 @@ class ActivityLog(models.Model):
 
 
 class Invoice(models.Model):
-    INVOICE_TYPE_CHOICES = (
-        ('IN', 'Inward (Stock Received / Purchase)'),
-        ('OUT', 'Outward (Stock Delivered / Sales)'),
+    TRANSACTION_TYPES = (
+        ('IN', 'Inward (Purchase)'),
+        ('OUT', 'Outward (Sale)'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    invoice_number = models.CharField(max_length=50, unique=True)
-    transaction_type = models.CharField(max_length=3, choices=INVOICE_TYPE_CHOICES, default='OUT')
-    party_name = models.CharField(max_length=200, help_text="Customer or Supplier Name")
-    contact_number = models.CharField(max_length=15, blank=True, null=True)
+    party_name = models.CharField(max_length=200)
+    transaction_type = models.CharField(max_length=3, choices=TRANSACTION_TYPES, default='OUT')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     def __str__(self):
-        return f"{self.invoice_number} - {self.party_name}"
-
-    class Meta:
-        ordering = ['-created_at']
+        return f"{self.get_transaction_type_display()} - #{self.id} ({self.party_name})"
 
 
 class InvoiceItem(models.Model):

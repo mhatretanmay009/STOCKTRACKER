@@ -470,48 +470,105 @@ def print_inventory_report(request):
 
 @login_required
 def create_transaction(request):
+    """
+    Handles Inward (Purchase) and Outward (Sale) transactions.
+    Automatically updates stock levels, Customer/Supplier ledgers, and activity logs.
+    """
+    # 1. Permission Check Guard
     profile = getattr(request.user, 'profile', None)
     if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_create_bill):
-        messages.error(request, "Permission denied. You do not have access to create bills.")
+        messages.error(request, "Permission denied. You do not have access to create transactions.")
         return redirect('home')
 
     if request.method == 'POST':
-        product_id = request.POST.get('product_id')
         transaction_type = request.POST.get('transaction_type')
-        quantity = int(request.POST.get('quantity', 0))
-        unit_price = float(request.POST.get('unit_price', 0))
-        party_name = request.POST.get('party_name', '')
+        product_id = request.POST.get('product_id')
+        party_name = request.POST.get('party_name', '').strip()
         notes = request.POST.get('notes', '')
+        raw_quantity = request.POST.get('quantity') or '0'
+        raw_unit_price = request.POST.get('unit_price') or '0.00'
 
-        product = get_object_or_404(Product, id=product_id)
-
-        # Validate stock availability for sales
-        if transaction_type == 'OUT' and product.quantity < quantity:
-            messages.error(request, f"Insufficient stock! Available: {product.quantity}")
+        try:
+            quantity = int(raw_quantity)
+            unit_price = Decimal(raw_unit_price)
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid quantity..Quantity must be greater than 0..")
             return redirect('create_transaction')
 
-        # Create Transaction Record
-        txn = Transaction.objects.create(
-            user=request.user,
-            product=product,
-            transaction_type=transaction_type,
-            quantity=quantity,
-            unit_price=unit_price,
-            party_name=party_name,
-            notes=notes
-        )
+        # Basic input validation
+        if quantity <= 0 :
+            messages.error(request, "Quantity must be greater than 0 and price cannot be negative.")
+            return redirect('create_transaction')
 
-        # Update Inventory Quantity
-        if transaction_type == 'IN':
-            product.quantity += quantity
-        else:
-            product.quantity -= quantity
-        product.save()
+        product = get_object_or_404(Product, id=product_id, user=request.user)
+        total_amount = quantity * unit_price
 
-        messages.success(request, f"Transaction recorded! Invoice #{txn.id} created.")
-        return redirect('view_invoice', txn_id=txn.id)
+        # Atomic transaction ensures all operations succeed together or fail safely
+        with transaction.atomic():
 
-    return render(request, 'transactions/create_transaction.html', {'products': products})
+            # --- OUTWARD TRANSACTION (SALE TO CUSTOMER) ---
+            if transaction_type == 'OUT':
+                if product.quantity < quantity:
+                    messages.error(
+                        request,
+                        f"Insufficient stock for '{product.name}'. Available: {product.quantity} units, Requested: {quantity} units."
+                    )
+                    return redirect('create_transaction')
+
+                # Automatically deduct stock
+                product.quantity -= quantity
+                action_text = f"Sold {quantity} units to {party_name} @ ₹{unit_price}/unit"
+
+                # Update Customer Ledger if record exists
+                customer = Customer.objects.filter(name__iexact=party_name).first()
+                if customer:
+                    customer.total_purchased_value += total_amount
+                    customer.save()
+
+            # --- INWARD TRANSACTION (PURCHASE FROM SUPPLIER) ---
+            elif transaction_type == 'IN':
+                # Automatically add stock
+                product.quantity += quantity
+                action_text = f"Purchased {quantity} units from {party_name} @ ₹{unit_price}/unit"
+
+                # Update Supplier Ledger if record exists
+                supplier = Supplier.objects.filter(name__iexact=party_name).first()
+                if supplier:
+                    supplier.total_supplied_value += total_amount
+                    supplier.save()
+
+            else:
+                messages.error(request, "Invalid transaction type selected.")
+                return redirect('create_transaction')
+
+            # Save updated inventory level
+            product.save()
+
+            # Record Invoice / Bill
+            Invoice.objects.create(
+                user=request.user,
+                party_name=party_name,
+                transaction_type=transaction_type,
+                product=product,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_amount=total_amount,
+                notes=notes
+            )
+
+            # Record Activity Log
+            ActivityLog.objects.create(
+                user=request.user,
+                product_name=product.name,
+                action=action_text
+            )
+
+        messages.success(request, f"Transaction recorded successfully! Stock for '{product.name}' updated.")
+        return redirect('invoice_history')
+
+    # GET Request: Render form with user's current products
+    products = Product.objects.filter(user=request.user)
+    return render(request, 'create_transaction.html', {'products': products})
 
 
 @login_required

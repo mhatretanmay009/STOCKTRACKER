@@ -100,14 +100,14 @@
                 <!-- 3. Suppliers Management (Purchaser, Manager, Admin, Superuser) -->
                 {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,PURCHASER' or user.profile.can_manage_suppliers %}
                     <a href="{% url 'supplier_list' %}" class="nav-link {% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}">
-                        🚚 Suppliers List
+                        🚚 Suppliers
                     </a>
                 {% endif %}
 
                 <!-- 4. Customers Management (Sales, Manager, Admin, Superuser) -->
                 {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,SALES' %}
                     <a href="{% url 'customer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
-                        👥 Customers List
+                        👥 Customers
                     </a>
                 {% endif %}
 

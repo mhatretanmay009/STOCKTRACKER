@@ -71,48 +71,55 @@ def home(request):
 
     return render(request, 'home.html', context)
 
+
 @login_required
 def add_product(request):
-# Check if user is approved and has permission
     profile = getattr(request.user, 'profile', None)
     if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_add_product):
         messages.error(request, "Permission denied. You do not have access to add products.")
         return redirect('home')
 
     if request.method == 'POST':
-        sku = request.POST.get('sku')
+        name = request.POST.get('name', '').strip()
+        sku = request.POST.get('sku', '').strip()
+        category = request.POST.get('category', '').strip()
 
-        # 1. Check if SKU already exists to prevent crashes
-        if Product.objects.filter(sku=sku).exists():
-            messages.error(request, f"A product with SKU '{sku}' already exists.")
+        # Safe numeric parsing with defaults
+        raw_quantity = request.POST.get('quantity') or '0'
+        raw_cost_price = request.POST.get('cost_price') or '0.00'
+        raw_unit_price = request.POST.get('unit_price') or '0.00'
+        raw_reorder_level = request.POST.get('reorder_level') or '5'
+
+        try:
+            quantity = int(raw_quantity)
+            cost_price = Decimal(raw_cost_price)
+            unit_price = Decimal(raw_unit_price)
+            reorder_level = int(raw_reorder_level)
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid numeric value entered. Please check quantity and pricing fields.")
             return redirect('home')
 
-        # 2. Create the product ONCE with all fields
-        product = Product.objects.create(
+        # Create product with validated numbers
+        Product.objects.create(
             user=request.user,
             sku=sku,
-            name=request.POST.get('name'),
-            category=request.POST.get('category'),
-            quantity=int(request.POST.get('quantity') or 0),
-            cost_price=float(request.POST.get('cost_price') or 0.00),
-            unit_price=float(request.POST.get('unit_price') or 0.00),
-            reorder_level=int(request.POST.get('reorder_level') or 5),
-            warehouse_location=request.POST.get('warehouse_location', ''),
-            image=request.FILES.get('image')
+            name=name,
+            category=category,
+            quantity=quantity,
+            cost_price=cost_price,
+            unit_price=unit_price,
+            reorder_level=reorder_level,
+            warehouse_location=request.POST.get('warehouse_location', '')
         )
 
-        # 3. Log the activity
         ActivityLog.objects.create(
             user=request.user,
-            product_name=product.name,
-            action="Added new item to inventory"
+            product_name=name,
+            action=f"Added new product with stock of {quantity} units"
         )
 
-        messages.success(request, f"Item '{product.name}' added successfully!")
+        messages.success(request, f"Product '{name}' added successfully!")
         return redirect('home')
-
-    return redirect('home')
-
 
 @login_required
 def edit_product(request, product_id):
@@ -470,11 +477,6 @@ def print_inventory_report(request):
 
 @login_required
 def create_transaction(request):
-    """
-    Handles Inward (Purchase) and Outward (Sale) transactions.
-    Automatically updates stock levels, Customer/Supplier ledgers, and activity logs.
-    """
-    # 1. Permission Check Guard
     profile = getattr(request.user, 'profile', None)
     if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_create_bill):
         messages.error(request, "Permission denied. You do not have access to create transactions.")
@@ -485,6 +487,8 @@ def create_transaction(request):
         product_id = request.POST.get('product_id')
         party_name = request.POST.get('party_name', '').strip()
         notes = request.POST.get('notes', '')
+
+        # Safe numeric parsing with defaults
         raw_quantity = request.POST.get('quantity') or '0'
         raw_unit_price = request.POST.get('unit_price') or '0.00'
 
@@ -492,59 +496,44 @@ def create_transaction(request):
             quantity = int(raw_quantity)
             unit_price = Decimal(raw_unit_price)
         except (ValueError, TypeError):
-            messages.error(request, "Invalid quantity..Quantity must be greater than 0..")
+            messages.error(request, "Please enter valid numbers for quantity and unit price.")
             return redirect('create_transaction')
 
-        # Basic input validation
-        if quantity <= 0 :
-            messages.error(request, "Quantity must be greater than 0 and price cannot be negative.")
+        if quantity <= 0:
+            messages.error(request, "Quantity must be greater than 0.")
             return redirect('create_transaction')
 
         product = get_object_or_404(Product, id=product_id, user=request.user)
         total_amount = quantity * unit_price
 
-        # Atomic transaction ensures all operations succeed together or fail safely
         with transaction.atomic():
-
-            # --- OUTWARD TRANSACTION (SALE TO CUSTOMER) ---
             if transaction_type == 'OUT':
                 if product.quantity < quantity:
                     messages.error(
                         request,
-                        f"Insufficient stock for '{product.name}'. Available: {product.quantity} units, Requested: {quantity} units."
+                        f"Insufficient stock for '{product.name}'. Available: {product.quantity} units."
                     )
                     return redirect('create_transaction')
 
-                # Automatically deduct stock
                 product.quantity -= quantity
                 action_text = f"Sold {quantity} units to {party_name} @ ₹{unit_price}/unit"
 
-                # Update Customer Ledger if record exists
                 customer = Customer.objects.filter(name__iexact=party_name).first()
                 if customer:
                     customer.total_purchased_value += total_amount
                     customer.save()
 
-            # --- INWARD TRANSACTION (PURCHASE FROM SUPPLIER) ---
             elif transaction_type == 'IN':
-                # Automatically add stock
                 product.quantity += quantity
                 action_text = f"Purchased {quantity} units from {party_name} @ ₹{unit_price}/unit"
 
-                # Update Supplier Ledger if record exists
                 supplier = Supplier.objects.filter(name__iexact=party_name).first()
                 if supplier:
                     supplier.total_supplied_value += total_amount
                     supplier.save()
 
-            else:
-                messages.error(request, "Invalid transaction type selected.")
-                return redirect('create_transaction')
-
-            # Save updated inventory level
             product.save()
 
-            # Record Invoice / Bill
             Invoice.objects.create(
                 user=request.user,
                 party_name=party_name,
@@ -556,20 +545,17 @@ def create_transaction(request):
                 notes=notes
             )
 
-            # Record Activity Log
             ActivityLog.objects.create(
                 user=request.user,
                 product_name=product.name,
                 action=action_text
             )
 
-        messages.success(request, f"Transaction recorded successfully! Stock for '{product.name}' updated.")
+        messages.success(request, f"Transaction recorded successfully!")
         return redirect('invoice_history')
 
-    # GET Request: Render form with user's current products
     products = Product.objects.filter(user=request.user)
     return render(request, 'create_transaction.html', {'products': products})
-
 
 @login_required
 def invoice_history(request):

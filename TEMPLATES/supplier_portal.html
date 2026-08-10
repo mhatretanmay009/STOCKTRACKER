@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🚚 Supplier Portal: {{ supplier.company_name|default:supplier.name }}</h2>
+    </div>
+
+    <!-- Give and Take Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-info text-white p-3 shadow-sm">
+                <div class="small text-uppercase">Total Supplied Value ("Give")</div>
+                <h3 class="fw-bold mb-0">₹ {{ supplier.total_supplied_value }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white p-3 shadow-sm">
+                <div class="small text-uppercase">Total Received Payment ("Take")</div>
+                <h3 class="fw-bold mb-0">₹ {{ supplier.total_paid_to_supplier }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card {% if balance_payable > 0 %}bg-warning text-dark{% else %}bg-secondary text-white{% endif %} p-3 shadow-sm">
+                <div class="small text-uppercase">Payment Pending From Company</div>
+                <h3 class="fw-bold mb-0">₹ {{ balance_payable }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplied Products Table -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-bold">
+            📦 Supplied Products & Current Warehouse Stock
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>SKU</th>
+                            <th>Product Name</th>
+                            <th>Current Warehouse Stock</th>
+                            <th>Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in supplied_products %}
+                        <tr>
+                            <td><code>{{ product.sku }}</code></td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.quantity }} units</td>
+                            <td>₹ {{ product.unit_price }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-muted">No inventory records linked to your supplier account.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

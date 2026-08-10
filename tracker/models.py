@@ -185,6 +185,8 @@ ROLE_CHOICES = (
     ('ACCOUNTANT', 'Accountant (Financials & Reports)'),
     ('MANAGER', 'Store Manager (Full Operational Access)'),
     ('ADMIN', 'System Admin (User Approvals & Settings)'),
+    ('SUPPLIER', 'External Supplier Portal'),
+    ('CUSTOMER', 'External Customer Portal'),
 )
 
 class Profile(models.Model):
@@ -193,7 +195,7 @@ class Profile(models.Model):
     requested_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CLERK')
     is_approved = models.BooleanField(default=False)
 
-    # Granular Task Permissions
+    # Permission Flags
     can_add_product = models.BooleanField(default=False)
     can_create_bill = models.BooleanField(default=False)
     can_manage_suppliers = models.BooleanField(default=False)
@@ -201,37 +203,42 @@ class Profile(models.Model):
     can_export_reports = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        # Auto-configure permission flags based on assigned role
-        if self.role == 'ADMIN' or self.role == 'MANAGER':
+        # Auto-assign permissions based on assigned role
+        if self.role in ['ADMIN', 'MANAGER']:
             self.can_add_product = True
             self.can_create_bill = True
             self.can_manage_suppliers = True
             self.can_view_financials = True
             self.can_export_reports = True
+
         elif self.role == 'CLERK':
             self.can_add_product = True
             self.can_create_bill = False
             self.can_manage_suppliers = False
             self.can_view_financials = False
             self.can_export_reports = False
+
         elif self.role == 'SALES':
             self.can_add_product = False
             self.can_create_bill = True
             self.can_manage_suppliers = False
             self.can_view_financials = False
             self.can_export_reports = False
+
         elif self.role == 'PURCHASER':
             self.can_add_product = True
             self.can_create_bill = False
             self.can_manage_suppliers = True
             self.can_view_financials = False
             self.can_export_reports = True
+
         elif self.role == 'ACCOUNTANT':
             self.can_add_product = False
             self.can_create_bill = False
             self.can_manage_suppliers = False
             self.can_view_financials = True
             self.can_export_reports = True
+
         elif self.role == 'VIEWER':
             self.can_add_product = False
             self.can_create_bill = False
@@ -239,7 +246,7 @@ class Profile(models.Model):
             self.can_view_financials = False
             self.can_export_reports = False
 
-        # Superusers automatically receive full access
+        # Superuser Overrides
         if self.user.is_superuser:
             self.is_approved = True
             self.role = 'ADMIN'
@@ -254,12 +261,39 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()} ({'Approved' if self.is_approved else 'Pending'})"
 
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
 
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+class Supplier(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='supplier_profile')
+    name = models.CharField(max_length=200)
+    company_name = models.CharField(max_length=200, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.TextField(blank=True, default='')
+
+    total_supplied_value = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_paid_to_supplier = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    @property
+    def balance_payable(self):
+        return self.total_supplied_value - self.total_paid_to_supplier
+
+    def __str__(self):
+        return f"{self.name} ({self.company_name})"
+
+
+class Customer(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='customer_profile')
+    name = models.CharField(max_length=200)
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.TextField(blank=True, default='')
+
+    total_purchased_value = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_paid_by_customer = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    @property
+    def balance_receivable(self):
+        return self.total_purchased_value - self.total_paid_by_customer
+
+    def __str__(self):
+        return self.name

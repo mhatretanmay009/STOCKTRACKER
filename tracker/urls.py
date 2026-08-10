@@ -32,4 +32,8 @@ urlpatterns = [
     path('suppliers/delete/<int:supplier_id>/', views.delete_supplier, name='delete_supplier'),
     path('customers/', views.customer_list, name='customer_list'),
     path('customers/delete/<int:customer_id>/', views.delete_customer, name='delete_customer'),
+    path('reports/', views.reports_view, name='reports'),
+    path('reports/export-csv/', views.export_inventory_csv, name='export_inventory_csv'),
+    path('portal/supplier/', views.supplier_portal, name='supplier_portal'),
+    path('portal/customer/', views.customer_portal, name='customer_portal'),
 ]

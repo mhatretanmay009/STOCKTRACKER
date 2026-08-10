@@ -99,18 +99,19 @@
 
                 <!-- Export Reports (Accountant, Purchaser, Manager, Admin) -->
                 {% if user.profile.is_approved and user.profile.can_export_reports or user.is_superuser %}
-                    <a href="{% url 'export_inventory_csv' %}" class="nav-link">
+                    <a href="{% url 'reports' %}" class="nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
                         📊 Export CSV
                     </a>
                 {% endif %}
 
                 <!-- Suppliers & Customers (Purchaser, Manager, Admin) -->
-                {% if user.profile.is_approved and user.profile.can_manage_suppliers or user.is_superuser %}
-                    <a href="{% url 'supplier_list' %}" class="nav-link">
-                        🚚 Suppliers
+                {% if user.profile.role == 'CUSTOMER' %}
+                    <a href="{% url 'customer_portal' %}" class="nav-link">
+                        👤 My Customer Portal
                     </a>
-                    <a href="{% url 'customer_list' %}" class="nav-link">
-                        👥 Customers
+                {% elif user.profile.role == 'SUPPLIER' %}
+                    <a href="{% url 'supplier_portal' %}" class="nav-link">
+                        🚚 My Supplier Portal
                     </a>
                 {% endif %}
 

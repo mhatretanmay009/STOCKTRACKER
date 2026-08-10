@@ -1,4 +1,3 @@
-import json
 import csv
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -8,8 +7,8 @@ from django.db.models import Q
 from django.http import HttpResponse
 from .models import Product, ActivityLog, Invoice, InvoiceItem, Supplier, Customer, CompanyProfile, Transaction, Profile
 from .utils import check_and_send_low_stock_alert
-from django.db.models import F, Sum, FloatField
 from django.contrib import messages
+from datetime import datetime
 
 def register_view(request):
     if request.method == 'POST':
@@ -72,13 +71,12 @@ def home(request):
 
     return render(request, 'home.html', context)
 
-
 @login_required
 def add_product(request):
-    # Lock action if user is not approved or lacks permissions
-    if not request.user.is_superuser and not (
-            request.user.profile.is_approved and request.user.profile.can_add_product):
-        messages.error(request, "Permission denied. You do not have rights to add products.")
+# Check if user is approved and has permission
+    profile = getattr(request.user, 'profile', None)
+    if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_add_product):
+        messages.error(request, "Permission denied. You do not have access to add products.")
         return redirect('home')
 
     if request.method == 'POST':
@@ -378,35 +376,54 @@ def company_settings(request):
 
 @login_required
 def export_inventory_csv(request):
-    """Exports all inventory items to a CSV file."""
+    """Generates and downloads CSV reports filtered by date range and report type."""
+    profile = getattr(request.user, 'profile', None)
+    if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_export_reports):
+        messages.error(request, "Permission denied. You do not have access to export reports.")
+        return redirect('home')
+
+    report_type = request.GET.get('report_type', 'activity')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    # Base filename
+    filename = f"{report_type}_report_{start_date_str or 'all'}_to_{end_date_str or 'today'}.csv"
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="inventory_report.csv"'
-
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
-    # Header row
-    writer.writerow([
-        'SKU', 'Product Name', 'Category', 'Quantity',
-        'Cost Price (₹)', 'Selling Price (₹)', 'Total Valuation (₹)',
-        'Reorder Level', 'Warehouse Location'
-    ])
 
-    products = Product.objects.all() if request.user.is_staff else Product.objects.filter(user=request.user)
+    # 1. Activity Log Report
+    if report_type == 'activity':
+        logs = ActivityLog.objects.filter(user=request.user)
+        if start_date_str:
+            logs = logs.filter(timestamp__gte=datetime.strptime(start_date_str, '%Y-%m-%d'))
+        if end_date_str:
+            logs = logs.filter(timestamp__lte=datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59))
 
-    for p in products:
-        writer.writerow([
-            p.sku,
-            p.name,
-            p.category,
-            p.quantity,
-            p.cost_price,
-            p.unit_price,
-            p.total_stock_value,
-            p.reorder_level,
-            p.warehouse_location or ''
-        ])
+        writer.writerow(['Date & Time', 'Product Name', 'Action Executed', 'User'])
+        for log in logs.order_by('-timestamp'):
+            writer.writerow([log.timestamp.strftime('%Y-%m-%d %H:%M:%S'), log.product_name, log.action, log.user.username])
+
+    # 2. Products Stock Report
+    elif report_type == 'products':
+        products = Product.objects.filter(user=request.user)
+        writer.writerow(['SKU', 'Name', 'Category', 'Quantity', 'Cost Price', 'Unit Price', 'Reorder Level', 'Warehouse Location'])
+        for item in products:
+            writer.writerow([item.sku, item.name, item.category, item.quantity, item.cost_price, item.unit_price, item.reorder_level, item.warehouse_location])
+
+    # 3. Invoice / Sales Report
+    elif report_type == 'invoices':
+        invoices = Invoice.objects.filter(user=request.user)
+        if start_date_str:
+            invoices = invoices.filter(created_at__gte=datetime.strptime(start_date_str, '%Y-%m-%d'))
+        if end_date_str:
+            invoices = invoices.filter(created_at__lte=datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59))
+
+        writer.writerow(['Invoice ID', 'Date', 'Customer Name', 'Total Amount', 'Status'])
+        for inv in invoices.order_by('-created_at'):
+            writer.writerow([inv.id, inv.created_at.strftime('%Y-%m-%d %H:%M'), getattr(inv.customer, 'name', 'N/A'), getattr(inv, 'total_amount', 0.00), getattr(inv, 'status', 'Completed')])
 
     return response
-
 
 @login_required
 def export_low_stock_csv(request):
@@ -453,8 +470,10 @@ def print_inventory_report(request):
 
 @login_required
 def create_transaction(request):
-    """Handles stock entry (Inward) and exit (Outward)."""
-    products = Product.objects.all() if request.user.is_staff else Product.objects.filter(user=request.user)
+    profile = getattr(request.user, 'profile', None)
+    if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_create_bill):
+        messages.error(request, "Permission denied. You do not have access to create bills.")
+        return redirect('home')
 
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
@@ -565,4 +584,54 @@ def delete_customer(request, customer_id):
         customer.delete()
         messages.success(request, "Customer deleted.")
     return redirect('customer_list')
+
+@login_required
+def reports_view(request):
+    """Renders the Reports & Export Dashboard page."""
+    profile = getattr(request.user, 'profile', None)
+    if not request.user.is_superuser and not (profile and profile.is_approved and profile.can_export_reports):
+        messages.error(request, "Permission denied. You do not have access to reports.")
+        return redirect('home')
+
+    recent_logs = ActivityLog.objects.filter(user=request.user).order_by('-timestamp')[:10]
+    return render(request, 'reports.html', {'recent_logs': recent_logs})
+
+@login_required
+def supplier_portal(request):
+    """Portal for logged-in Suppliers to view products supplied, sales, and balance owed."""
+    try:
+        supplier = request.user.supplier_profile
+    except Supplier.DoesNotExist:
+        messages.error(request, "Access denied. You do not have an active Supplier account.")
+        return redirect('home')
+
+    # Fetch products associated with this supplier
+    supplied_products = Product.objects.filter(warehouse_location__icontains=supplier.name)
+
+    context = {
+        'supplier': supplier,
+        'supplied_products': supplied_products,
+        'balance_payable': supplier.balance_payable,
+    }
+    return render(request, 'supplier_portal.html', context)
+
+
+@login_required
+def customer_portal(request):
+    """Portal for logged-in Customers to view their invoices and payment balance."""
+    try:
+        customer = request.user.customer_profile
+    except Customer.DoesNotExist:
+        messages.error(request, "Access denied. You do not have an active Customer account.")
+        return redirect('home')
+
+    # Fetch invoices belonging to this customer
+    invoices = Invoice.objects.filter(customer=customer).order_by('-created_at')
+
+    context = {
+        'customer': customer,
+        'invoices': invoices,
+        'balance_receivable': customer.balance_receivable,
+    }
+    return render(request, 'customer_portal.html', context)
 

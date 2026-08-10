@@ -82,13 +82,13 @@
                     </div>
                 {% endif %}
 
-                <!-- Dashboard (Available to all logged-in users) -->
+                <!-- 1. Dashboard (All Logged-in Users) -->
                 <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     📈 Dashboard
                 </a>
 
-                <!-- Create Bill & Invoice History (Sales, Manager, Admin) -->
-                {% if user.profile.is_approved and user.profile.can_create_bill or user.is_superuser %}
+                <!-- 2. Create Bill & Invoice History (Sales, Manager, Admin, Superuser) -->
+                {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,SALES' or user.profile.can_create_bill %}
                     <a href="{% url 'create_transaction' %}" class="nav-link {% if request.resolver_match.url_name == 'create_transaction' %}active{% endif %}">
                         📝 Create New Bill
                     </a>
@@ -97,30 +97,52 @@
                     </a>
                 {% endif %}
 
-                <!-- Export Reports (Accountant, Purchaser, Manager, Admin) -->
-                {% if user.profile.is_approved and user.profile.can_export_reports or user.is_superuser %}
-                    <a href="{% url 'reports' %}" class="nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
-                        📊 Export CSV
+                <!-- 3. Suppliers Management (Purchaser, Manager, Admin, Superuser) -->
+                {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,PURCHASER' or user.profile.can_manage_suppliers %}
+                    <a href="{% url 'supplier_list' %}" class="nav-link {% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}">
+                        🚚 Suppliers List
                     </a>
                 {% endif %}
 
-                <!-- Suppliers & Customers (Purchaser, Manager, Admin) -->
+                <!-- 4. Customers Management (Sales, Manager, Admin, Superuser) -->
+                {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,SALES' %}
+                    <a href="{% url 'customer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
+                        👥 Customers List
+                    </a>
+                {% endif %}
+
+                <!-- 5. Reports & CSV Export (Accountant, Purchaser, Manager, Admin, Superuser) -->
+                {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER,ACCOUNTANT,PURCHASER' or user.profile.can_export_reports %}
+                    <a href="{% url 'reports' %}" class="nav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                        📊 Reports & Export
+                    </a>
+                {% endif %}
+
+                <!-- 6. Company Settings (Manager, Admin, Superuser) -->
+                {% if user.is_superuser or user.profile.role in 'ADMIN,MANAGER' %}
+                    <a href="{% url 'company_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'company_settings' %}active{% endif %}">
+                        ⚙️ Settings
+                    </a>
+                {% endif %}
+
+                <!-- 7. Django Admin Panel (Superuser & Admin Only) -->
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
+                    <a href="/admin/" target="_blank" class="nav-link text-warning fw-bold">
+                        🔑 Admin Control Panel
+                    </a>
+                {% endif %}
+
+                <!-- 8. External Portals (Only visible to dedicated External Accounts) -->
                 {% if user.profile.role == 'CUSTOMER' %}
-                    <a href="{% url 'customer_portal' %}" class="nav-link">
+                    <a href="{% url 'customer_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_portal' %}active{% endif %}">
                         👤 My Customer Portal
                     </a>
                 {% elif user.profile.role == 'SUPPLIER' %}
-                    <a href="{% url 'supplier_portal' %}" class="nav-link">
+                    <a href="{% url 'supplier_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'supplier_portal' %}active{% endif %}">
                         🚚 My Supplier Portal
                     </a>
                 {% endif %}
 
-                <!-- Company Settings (Manager, Admin) -->
-                {% if user.profile.is_approved and user.profile.role == 'ADMIN' or user.profile.role == 'MANAGER' or user.is_superuser %}
-                    <a href="{% url 'company_settings' %}" class="nav-link">
-                        ⚙️ Settings
-                    </a>
-                {% endif %}
             </div>
 
             <!-- User Auth Footer -->

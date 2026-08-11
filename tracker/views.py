@@ -12,18 +12,49 @@ from datetime import datetime
 
 def register_view(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        requested_role = request.POST.get('requested_role', 'EMPLOYEE')
-        if form.is_valid():
-            user = form.save()
-            # Update the auto-created profile with the requested role
-            user.profile.requested_role = requested_role
-            user.profile.save()
-            messages.success(request, "Account created successfully! Please wait for Admin approval before accessing all features.")
-            return redirect('login')
-    else:
-        form = UserCreationForm()
-    return render(request, 'registration/signup.html', {'form': form})
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password')
+        role = request.POST.get('role', 'VIEWER')
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Username is already taken.")
+            return redirect('register')
+
+        # 1. Create User
+        user = User.objects.create_user(username=username, email=email, password=password)
+
+        # 2. Safely Get or Create Profile (Prevents RelatedObjectDoesNotExist error)
+        profile, created = Profile.objects.get_or_create(user=user)
+
+        # 3. Set Profile Attributes
+        profile.role = role
+        # Superusers auto-approve; regular signups require admin approval
+        profile.is_approved = user.is_superuser
+
+        # Enable specific permissions based on selected role
+        if role == 'SALES':
+            profile.can_create_bill = True
+        elif role == 'PURCHASER':
+            profile.can_manage_suppliers = True
+            profile.can_export_reports = True
+        elif role == 'ACCOUNTANT':
+            profile.can_export_reports = True
+        elif role in ['ADMIN', 'MANAGER']:
+            profile.can_create_bill = True
+            profile.can_add_product = True
+            profile.can_manage_suppliers = True
+            profile.can_export_reports = True
+
+        profile.save()
+
+        # 4. Log in and redirect
+        login(request, user)
+        messages.success(request, "Account created successfully!")
+        return redirect('home')
+
+    return render(request, 'registration/register.html')
+
 
 @login_required
 def home(request):

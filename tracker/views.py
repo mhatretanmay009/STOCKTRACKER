@@ -555,7 +555,7 @@ def create_transaction(request):
         return redirect('invoice_history')
 
     products = Product.objects.filter(user=request.user)
-    return render(request, 'create_transaction.html', {'products': products})
+    return render(request, 'transactions/create_transaction.html', {'products': products})
 
 @login_required
 def invoice_history(request):

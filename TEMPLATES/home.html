@@ -36,7 +36,7 @@
     <div class="col-md-3">
         <div class="card shadow-sm border-0 bg-dark text-white p-3">
             <h6 class="text-uppercase fw-bold mb-1 small opacity-75">Total Asset Value</h6>
-            <h2 class="mb-0 fw-bold">₹{{ total_value }}</h2>
+            <h2 class="mb-0 fw-bold">₹{{ total_valuation|default:0|floatformat:2 }}</h2>
         </div>
     </div>
 </div>
@@ -174,13 +174,13 @@
         </form>
 
         <!-- Barcode Scanner Trigger Button -->
-        <button type="button" class="btn btn-dark fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#barcodeModal">
+        <button type="button" class="btn btn-dark fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#cameraScannerModal">
             📷 Scan Barcode
         </button>
     </div>
 
     <!-- Camera Barcode Scanner Modal -->
-    <div class="modal fade" id="barcodeModal" tabindex="-1" aria-labelledby="barcodeModalLabel" aria-hidden="true">
+    <div class="modal fade" id="cameraScannerModal" tabindex="-1" aria-labelledby="cameraScannerModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -394,53 +394,6 @@ function showBarcodeModal(productName, sku) {
 }
 </script>
 
-<!-- Chart JS Initialization Scripts -->
-<script>
-    const categoryLabels = {{ category_labels|safe }};
-    const categoryData = {{ category_data|safe }};
-
-    // Category Bar Chart
-    const ctxCategory = document.getElementById('categoryChart').getContext('2d');
-    new Chart(ctxCategory, {
-        type: 'bar',
-        data: {
-            labels: categoryLabels,
-            datasets: [{
-                label: 'Stock Quantity',
-                data: categoryData,
-                backgroundColor: '#0d6efd',
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    // Status Doughnut Chart
-    const ctxStatus = document.getElementById('statusChart').getContext('2d');
-
-    new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: ['In Stock', 'Low Stock'],
-            datasets: [{
-                data: [
-                    Number("{{ in_stock_count|default:0 }}"),
-                    Number("{{ low_stock_count|default:0 }}")
-                ],
-                backgroundColor: ['#198754', '#ffc107']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-    </script>
 
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -511,7 +464,7 @@ function showBarcodeModal(productName, sku) {
     document.addEventListener("DOMContentLoaded", function () {
         let html5QrCode = null;
 
-        const modalElement = document.getElementById('barcodeModal');
+        const modalElement = document.getElementById('cameraScannerModal');
         const searchInput = document.getElementById('sku-search-input');
         const scanResultDiv = document.getElementById('scan-result');
 

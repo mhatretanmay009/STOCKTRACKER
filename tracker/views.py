@@ -300,6 +300,17 @@ def create_transaction(request):
 
             product.save()
 
+            Transaction.objects.create(
+                user=request.user,
+                product=product,
+                transaction_type=transaction_type,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_amount=total_amount,
+                party_name=party_name,
+                notes=notes
+            )
+
             Invoice.objects.create(
                 user=request.user,
                 party_name=party_name,

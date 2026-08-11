@@ -28,6 +28,12 @@ class Profile(models.Model):
     can_export_reports = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
+        self.can_add_product = False
+        self.can_create_bill = False
+        self.can_manage_suppliers = False
+        self.can_view_financials = False
+        self.can_export_reports = False
+
         if self.role in ['ADMIN', 'MANAGER']:
             self.can_add_product = True
             self.can_create_bill = True
@@ -160,6 +166,10 @@ class InvoiceItem(models.Model):
     product_name = models.CharField(max_length=200)
     quantity = models.PositiveIntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit_price
 
 
 class CompanyProfile(models.Model):

@@ -174,12 +174,13 @@
                     <div>
                         <h3>📦 StockTracker </h3>
                     </div>
-                    <!-- User Auth Footer -->
+                    <!-- User Auth Actions -->
                     {% if user.is_authenticated %}
-                        <div class="mt-auto pt-3 border-top border-secondary">
-                            <form method="post" action="{% url 'logout' %}">
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <span class="small text-muted fw-bold d-none d-md-inline">Logged in as: {{ user.username }}</span>
+                            <form method="post" action="{% url 'logout' %}" class="m-0">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm w-100">Logout</button>
+                                <button type="submit" class="btn btn-outline-danger btn-sm px-3">Logout</button>
                             </form>
                         </div>
                     {% endif %}

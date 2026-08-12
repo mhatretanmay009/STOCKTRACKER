@@ -66,9 +66,8 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
-
 class Supplier(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='supplier_profile')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='suppliers')
     name = models.CharField(max_length=200)
     company_name = models.CharField(max_length=200, blank=True, default='')
     contact_person = models.CharField(max_length=100, blank=True, default='')
@@ -88,7 +87,7 @@ class Supplier(models.Model):
 
 
 class Customer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='customer_profile')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='customers')
     name = models.CharField(max_length=200)
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')

@@ -665,13 +665,12 @@ def print_inventory_report(request):
     }
     return render(request, 'reports/inventory_pdf.html', context)
 
-
 @login_required
 def supplier_portal(request):
     """Portal view for Suppliers."""
-    try:
-        supplier = request.user.supplier_profile
-    except Supplier.DoesNotExist:
+    supplier = Supplier.objects.filter(user=request.user).first()
+
+    if not supplier:
         messages.error(request, "Access denied. You do not have an active Supplier account.")
         return redirect('home')
 
@@ -688,12 +687,11 @@ def supplier_portal(request):
 @login_required
 def customer_portal(request):
     """Portal view for Customers."""
-    try:
-        customer = request.user.customer_profile
+    customer = Customer.objects.filter(user=request.user).first()
+    if customer:
         invoices = Invoice.objects.filter(customer=customer).order_by('-created_at')
-    except Customer.DoesNotExist:
+    else:
         invoices = Invoice.objects.filter(party_name__iexact=request.user.username).order_by('-created_at')
-        customer = None
 
     context = {
         'customer': customer,

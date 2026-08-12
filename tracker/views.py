@@ -139,6 +139,9 @@ def add_product(request):
             messages.error(request, "Invalid numeric value entered. Please check quantity and pricing fields.")
             return redirect('home')
 
+        # Retrieve image from request.FILES
+        image = request.FILES.get('image')
+
         Product.objects.create(
             user=request.user,
             sku=sku,
@@ -148,7 +151,8 @@ def add_product(request):
             cost_price=cost_price,
             unit_price=unit_price,
             reorder_level=reorder_level,
-            warehouse_location=request.POST.get('warehouse_location', '')
+            warehouse_location=request.POST.get('warehouse_location', ''),
+            image=image  # Saved image on product creation
         )
 
         ActivityLog.objects.create(
@@ -171,7 +175,12 @@ def edit_product(request, product_id):
         product.name = request.POST.get('name')
         product.category = request.POST.get('category')
         product.quantity = int(request.POST.get('quantity', 0))
-        product.cost_price = Decimal(request.POST.get('cost_price', '0.00'))
+
+        # Only update cost_price if sent in POST; otherwise keep existing value
+        raw_cost_price = request.POST.get('cost_price')
+        if raw_cost_price is not None and raw_cost_price != '':
+            product.cost_price = Decimal(raw_cost_price)
+
         product.unit_price = Decimal(request.POST.get('unit_price', '0.00'))
         product.reorder_level = int(request.POST.get('reorder_level', 5))
         product.warehouse_location = request.POST.get('warehouse_location')

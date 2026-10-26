@@ -41,4 +41,8 @@ urlpatterns = [
     # Portals
     path('portal/supplier/', views.supplier_portal, name='supplier_portal'),
     path('portal/customer/', views.customer_portal, name='customer_portal'),
+
+    # Admin-Approval Password Reset URLs
+    path('forgot-password/', views.forgot_password_request, name='forgot_password'),
+    path('reset-password/<uuid:token>/', views.set_new_password, name='set_new_password'),
 ]

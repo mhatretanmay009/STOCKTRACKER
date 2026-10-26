@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.db import transaction
 from django.http import HttpResponse
 from django.contrib import messages
+from .models import PasswordResetRequest
 
 from .models import (
     Product, ActivityLog, Invoice, InvoiceItem, Supplier,
@@ -714,3 +715,70 @@ def logout_view(request):
     """Logs out user and redirects to login."""
     logout(request)
     return redirect('login')
+
+def forgot_password_request(request):
+    """Handles password reset requests and routes approved users to the reset form."""
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+
+        try:
+            target_user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            messages.error(request, "No account found with that username.")
+            return render(request, 'registration/forgot_password_request.html')
+
+        # Check for an existing pending or approved unused request
+        existing_request = PasswordResetRequest.objects.filter(
+            user=target_user,
+            is_used=False
+        ).order_by('-created_at').first()
+
+        if existing_request:
+            if existing_request.is_approved:
+                return redirect('set_new_password', token=existing_request.token)
+            else:
+                messages.warning(
+                    request,
+                    "Your request has already been submitted and is pending approval from an Admin or Manager."
+                )
+                return render(request, 'registration/forgot_password_request.html')
+
+        # Create new reset request pending admin review
+        PasswordResetRequest.objects.create(user=target_user, is_approved=False)
+        messages.success(
+            request,
+            "Reset request submitted. Once an Admin or Manager approves it, enter your username here to change your password."
+        )
+        return render(request, 'registration/forgot_password_request.html')
+
+    return render(request, 'registration/forgot_password_request.html')
+
+
+def set_new_password(request, token):
+    """Allows setting a new password once the request is approved by an admin."""
+    reset_req = get_object_or_404(PasswordResetRequest, token=token, is_approved=True, is_used=False)
+
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if not password or not confirm_password:
+            messages.error(request, "Please fill in all password fields.")
+            return render(request, 'registration/set_new_password.html', {'reset_req': reset_req})
+
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'registration/set_new_password.html', {'reset_req': reset_req})
+
+        # Update user password and mark token as used
+        user = reset_req.user
+        user.set_password(password)
+        user.save()
+
+        reset_req.is_used = True
+        reset_req.save()
+
+        messages.success(request, "Password successfully updated! You can now log in.")
+        return redirect('login')
+
+    return render(request, 'registration/set_new_password.html', {'reset_req': reset_req})

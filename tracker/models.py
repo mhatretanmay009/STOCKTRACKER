@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+import uuid
 
 ROLE_CHOICES = (
     ('VIEWER', 'Viewer (Check Stock Only)'),
@@ -206,3 +207,16 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
+
+class PasswordResetRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_requests')
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    is_approved = models.BooleanField(default=False)
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        status = "Approved" if self.is_approved else "Pending"
+        if self.is_used:
+            status = "Used"
+        return f"{self.user.username} - {status} ({self.created_at.strftime('%d %b %Y %H:%M')})"

@@ -1,8 +1,9 @@
+import uuid
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import uuid
 
 ROLE_CHOICES = (
     ('VIEWER', 'Viewer (Check Stock Only)'),
@@ -18,8 +19,8 @@ ROLE_CHOICES = (
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='VIEWER')
-    requested_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CLERK')
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='VIEWER')
+    requested_role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='CLERK')
     is_approved = models.BooleanField(default=False)
 
     can_add_product = models.BooleanField(default=False)
@@ -29,30 +30,35 @@ class Profile(models.Model):
     can_export_reports = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
+        # Reset permission flags prior to evaluation
         self.can_add_product = False
         self.can_create_bill = False
         self.can_manage_suppliers = False
         self.can_view_financials = False
         self.can_export_reports = False
 
-        if self.role in ['ADMIN', 'MANAGER']:
+        role_key = (self.role or '').upper()
+
+        if role_key in ['ADMIN', 'MANAGER']:
             self.can_add_product = True
             self.can_create_bill = True
             self.can_manage_suppliers = True
             self.can_view_financials = True
             self.can_export_reports = True
-        elif self.role == 'CLERK':
+        elif role_key == 'CLERK':
             self.can_add_product = True
-        elif self.role == 'SALES':
+        elif role_key == 'SALES':
             self.can_create_bill = True
-        elif self.role == 'PURCHASER':
+        elif role_key == 'PURCHASER':
             self.can_add_product = True
+            self.can_create_bill = True          # Allows recording Inward purchase bills
             self.can_manage_suppliers = True
             self.can_export_reports = True
-        elif self.role == 'ACCOUNTANT':
+        elif role_key == 'ACCOUNTANT':
             self.can_view_financials = True
             self.can_export_reports = True
 
+        # Superuser override
         if self.user.is_superuser:
             self.is_approved = True
             self.role = 'ADMIN'
@@ -67,24 +73,26 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
+
 class Supplier(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='suppliers')
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, blank=True, default='')
     company_name = models.CharField(max_length=200, blank=True, default='')
     contact_person = models.CharField(max_length=100, blank=True, default='')
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     address = models.TextField(blank=True, default='')
 
-    total_supplied_value = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    total_paid_to_supplier = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_supplied_value = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_paid_to_supplier = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
     @property
     def balance_payable(self):
         return self.total_supplied_value - self.total_paid_to_supplier
 
     def __str__(self):
-        return f"{self.name} ({self.company_name})"
+        label = self.company_name or self.name or "Unnamed Supplier"
+        return label
 
 
 class Customer(models.Model):
@@ -94,8 +102,8 @@ class Customer(models.Model):
     phone = models.CharField(max_length=20, blank=True, default='')
     address = models.TextField(blank=True, default='')
 
-    total_purchased_value = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    total_paid_by_customer = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_purchased_value = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_paid_by_customer = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
     @property
     def balance_receivable(self):
@@ -112,7 +120,7 @@ class Product(models.Model):
     category = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     image = models.ImageField(upload_to='product_images/', blank=True, null=True)
     reorder_level = models.PositiveIntegerField(default=5)
     warehouse_location = models.CharField(max_length=100, blank=True, null=True)
@@ -154,8 +162,8 @@ class Invoice(models.Model):
     transaction_type = models.CharField(max_length=3, choices=TRANSACTION_TYPES, default='OUT')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -207,6 +215,7 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
+
 
 class PasswordResetRequest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_requests')
